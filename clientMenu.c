@@ -20,12 +20,15 @@
 #define _APPT_PLACE 65 // 64 Characters Max
 #define _APPT_DESCRIPTION 129 // 128 Characters Max
 
+FILE *outfile;
+FILE *infile;
+
 struct contact
 
 {
     char username[20], password[20], email[30], phoneNumber[18];
 
-} user;
+} user, possible_user, empty_user;
 
 typedef struct {
 
@@ -37,6 +40,8 @@ typedef struct {
 } appointment;
 
 char currentUsername[20] = "not authenticated";
+char filename[20];
+char * fileExtension = ".txt";
 bool userAuthenticated = false;
 int selection;
 appointment currentAppointment;
@@ -47,6 +52,7 @@ void authorizeExistingUser();
 void addNewUser();
 void removeUser();
 void modifyUserInformation();
+void saveInformation();
 void clearScreen();
 void flush();
 appointment newAppointment();
@@ -72,7 +78,7 @@ void displayMainMenu() {
     printf("2. Remove User\n");
     printf("3. Modify User Information\n");
     printf("4. View Appointments Menu\n");
-    printf("5. Exit\n\n");
+    printf("5. Save & Exit\n\n");
     printf("Selection: ");
 
     scanf("%d", &selection);
@@ -135,6 +141,7 @@ void displayMainMenu() {
           break;
 
        case 5  :
+          //saveInformation();
           printf("Now exiting... Goodbye!\n\n");
           exit(1);
           break;
@@ -160,19 +167,41 @@ void authorizeExistingUser() {
         //scanf("%s", &Password); 
         Password = getpass("Please enter your password: ");
 
-        if (strcmp(Username, "username") == 0 && strcmp(Password, "pass") == 0)
+        strncpy(filename, Username, sizeof(Username));
+        strcat(filename, fileExtension);
+        
+        infile = fopen(filename, "r");
+        if(infile == NULL)
         {
-            printf("\n*** AUTHORIZATION SUCCESS ***\n");
-            printf("Welcome, %s!\n\n", Username);
-            strncpy(currentUsername, Username, 20);
-            userAuthenticated = true;
-        } 
-        else
-        {
-            printf("\n*** AUTHORIZATION FAILURE ***\n");
-            printf("The Username or Password you entered is invalid. Please try again.\n");
-            userAuthenticated = false;
+            printf("\nA user with entered Username does not exist. Please try again.\n");
+        } else {
+        
+            int result = fscanf(infile, "%[^;];%[^;];%[^;];%[^;]", &possible_user.username, &possible_user.password, &possible_user.email, &possible_user.phoneNumber);
+
+            // For testing
+            //printf("Entered username: %s , Compared username: %s\n", &Username, &possible_user.username);
+            //printf("Entered password: %s , Compared password: %s\n", Password, &possible_user.password);
+
+            if (result != NULL) {
+                if (strcmp(&possible_user.username, &Username) == 0 && strcmp(&possible_user.password, Password) == 0) {
+                    user = possible_user;
+                    //printf("\nLOADED DETAILS: user: %s ; password: %s ; email: %s ; phone: %s\n", &possible_user.username, &possible_user.password, &possible_user.email, &possible_user.phoneNumber);
+                    printf("\n*** AUTHORIZATION SUCCESS ***\n");
+                    printf("Welcome, %s!\n", &user.username);
+                    strncpy(currentUsername, &user.username, 20);
+                    userAuthenticated = true;
+                }  else {
+                    printf("\n*** AUTHORIZATION FAILURE ***\n");
+                    printf("The Username and/or Password you entered is invalid. Please try again.\n");
+                    userAuthenticated = false;
+                }
+            } else {
+                printf("\n*** UNABLE TO VERIFY CREDENTIALS ***\n");
+            }
         }
+        
+        possible_user = empty_user;
+        fclose(infile);
         displayMainMenu();
     }
 }
@@ -214,21 +243,45 @@ void addNewUser() {
 
     strncpy(currentUsername, &user.username, 20);
     userAuthenticated = true;
+    saveInformation();
     displayMainMenu();
 }
 
 void removeUser() {
-    printf("\n*** REMOVING USER: %s *** \n", currentUsername);
-    printf("User removed successfully. Returning to Main Menu.\n");
-    userAuthenticated = false;
-    strncpy(currentUsername, "not authenticated", 20);
+    flush();
+    printf("You are currently signed in as: %s\n", currentUsername);
+    printf("Are you sure you want to Delete this User? (1 = yes, 0 = no)   : ");
+    int areYouSure = getchar();
+    areYouSure -= '0';
+
+    if (areYouSure == 1) {
+        strncpy(filename, currentUsername, sizeof(currentUsername));
+        strcat(filename, fileExtension);
+
+        //printf("user file to delete: %s\n", filename);
+        printf("\n*** REMOVING USER: %s *** \n", &currentUsername);
+
+        int result = remove(filename);
+
+        if(result == 0) {
+           printf("User removed successfully. Returning to Main Menu...\n");
+           userAuthenticated = false;
+           strncpy(currentUsername, "not authenticated", 20);
+           user = empty_user;
+        } else {
+           printf("Error: unable to delete the user. Please try again.\n");
+        }
+    } else {
+        printf("User Delete request canceled. Returning to Main Menu...\n");
+    }
+    
     displayMainMenu();
 }
 
 void modifyUserInformation() {
     flush();
     printf("Please enter new details for User: %s\n\nNew Name: ", currentUsername);
-    scanf("%s",&user.username);
+    strncpy(&user.username, currentUsername, 20);
 
     //printf("Password: ");
     //scanf("%s",&user.password);
@@ -253,11 +306,42 @@ void modifyUserInformation() {
     printf("You are authenticated as: %s\n", &user.username);
     printf("New Phone Number: %s\n", &user.phoneNumber);
     printf("New Email Address: %s\n", &user.email);
+  
     printf("\nNow returning to Main Menu...\n");
 
     strncpy(currentUsername, &user.username, 20);
     userAuthenticated = true;
+    saveInformation();
     displayMainMenu();
+}
+
+void saveInformation() {
+    if (userAuthenticated) {
+        strncpy(filename, currentUsername, sizeof(currentUsername));
+        strcat(filename, fileExtension);
+        //printf("%s", filename);
+        
+        outfile = fopen (filename, "w");
+        if (outfile == NULL)
+        {
+            fprintf(stderr, "\nError saving User Data to file %s\n", filename);
+        } else {
+
+            // Write user information to file
+            // Data written in following order: username, password, email, phoneNumber
+            // Delimiter used - ";"
+            int result = fprintf(outfile, "%s;%s;%s;%s", &user.username, &user.password, &user.email, &user.phoneNumber);
+
+            if(result != 0) {
+                printf("\nUser Information saved successfully!\n");
+            } else {
+                printf("\nError saving User Information\n");
+            }
+            fclose(outfile);
+        }
+    } else {
+        printf("\nYou are not Signed in, so there is no Information to save.\nTo Save Information you need to either Sign In or Add a New User.\n");
+    }
 }
 
 void displayAppointmentsMenu() {
