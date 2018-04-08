@@ -40,11 +40,13 @@ typedef struct {
 } appointment;
 
 char currentUsername[20] = "not authenticated";
-char filename[20];
+char filename[40];
 char * fileExtension = ".txt";
+char * appointmentExtension = "_appointment.txt";
 bool userAuthenticated = false;
 int selection;
 appointment currentAppointment;
+appointment emptyAppointment;
 
 void displayMainMenu();
 void displayAppointmentsMenu();
@@ -56,9 +58,11 @@ void saveInformation();
 void clearScreen();
 void flush();
 appointment newAppointment();
-void removeAppointment();
+void removeAppointments();
+void loadAppointments();
 void showAppointments();
 void modifyAppointment();
+void saveAppointment(appointment appt);
 
 
 int main(int argc, char *argv[])
@@ -78,7 +82,7 @@ void displayMainMenu() {
     printf("2. Remove User\n");
     printf("3. Modify User Information\n");
     printf("4. View Appointments Menu\n");
-    printf("5. Save & Exit\n\n");
+    printf("5. Exit\n\n");
     printf("Selection: ");
 
     scanf("%d", &selection);
@@ -143,7 +147,7 @@ void displayMainMenu() {
        case 5  :
           //saveInformation();
           printf("Now exiting... Goodbye!\n\n");
-          exit(1);
+          exit(0);
           break;
       
        default :
@@ -208,42 +212,52 @@ void authorizeExistingUser() {
 
 void addNewUser() {
     flush();
-    printf("To return to Main Menu, enter 0 for Name\n\nName: ");
-    scanf("%s",&user.username);
+    char Username[20];
+    printf("To return to Main Menu, enter 0 for Username\n\nUsername: ");
+    scanf("%s",&Username);
 
-    if(strcmp(user.username,"0") == 0) {
+    if(strcmp(Username,"0") == 0) {
         displayMainMenu();
-        return;
      }
+    
+    strncpy(filename, Username, sizeof(Username));
+    strcat(filename, fileExtension);
+    
+    if( access( filename, F_OK ) == -1 ) {
 
-    //printf("Password: ");
-    //scanf("%s",&user.password);
-    bool passwordAccepted = false;
-    while (!passwordAccepted) {
-        char *Password = getpass("Please enter your password: ");
-        if (strlen(Password) > 8 && strlen(Password) < 16) {
-            strncpy(&user.password, Password, 20);
-            passwordAccepted = true;
-        } else {
-            printf("Password should be longer than 8 and shorter than 16 characters.\nTry again...\n");
+        //printf("Password: ");
+        //scanf("%s",&user.password);
+        bool passwordAccepted = false;
+        while (!passwordAccepted) {
+            char *Password = getpass("Please enter your password: ");
+            if (strlen(Password) > 8 && strlen(Password) < 16) {
+                strncpy(&user.password, Password, 20);
+                passwordAccepted = true;
+            } else {
+                printf("Password should be longer than 8 and shorter than 16 characters.\nTry again...\n");
+            }
         }
+
+        printf("Phone Number: ");
+        scanf("%s",&user.phoneNumber);
+
+        printf("Email address: ");
+        scanf("%s", &user.email);
+
+        strncpy(&user.username, Username, 20);
+        strncpy(currentUsername, &user.username, 20);
+        userAuthenticated = true;
+        
+        printf("\n*** NEW USER ADDED SUCCESSFULLY ***\n");
+        printf("You are now authenticated as: %s\n", &user.username);
+        printf("Entered Phone Number: %s\n", &user.phoneNumber);
+        printf("Entered Email Address: %s\n", &user.email);
+        printf("\nNow returning to Main Menu...\n");
+        saveInformation();
+    } else {
+        printf("\n*** USER WITH NAME '%s' ALREADY EXISTS ***\n", Username);
+        printf("Please try different Username.\n");         
     }
-
-    printf("Phone Number: ");
-    scanf("%s",&user.phoneNumber);
-
-    printf("Email address: ");
-    scanf("%s", &user.email);
-
-    printf("\n*** NEW USER ADDED SUCCESSFULLY ***\n");
-    printf("You are now authenticated as: %s\n", &user.username);
-    printf("Entered Phone Number: %s\n", &user.phoneNumber);
-    printf("Entered Email Address: %s\n", &user.email);
-    printf("\nNow returning to Main Menu...\n");
-
-    strncpy(currentUsername, &user.username, 20);
-    userAuthenticated = true;
-    saveInformation();
     displayMainMenu();
 }
 
@@ -310,6 +324,7 @@ void modifyUserInformation() {
     printf("\nNow returning to Main Menu...\n");
 
     strncpy(currentUsername, &user.username, 20);
+
     userAuthenticated = true;
     saveInformation();
     displayMainMenu();
@@ -350,7 +365,7 @@ void displayAppointmentsMenu() {
     printf("[current user: %s]\n", currentUsername);
 
     printf("0. Add Appointment\n");
-    printf("1. Remove Appointment\n");
+    printf("1. Remove Appointments\n");
     printf("2. Show My Appointments\n");
     printf("3. Update Existing Appointment\n");
     printf("4. Go back to Main Menu\n");
@@ -367,7 +382,7 @@ void displayAppointmentsMenu() {
           break;
         
        case 1  :
-          removeAppointment();
+          removeAppointments();
           break;
 
        case 2  :
@@ -379,12 +394,13 @@ void displayAppointmentsMenu() {
           break;
 
        case 4 :
+          printf("Now showing the Main Menu...\n");
           displayMainMenu();
           break;
 
        case 5  :
           printf("Now exiting... Goodbye!\n\n");
-          exit(1);
+          exit(0);
           break;
       
        default :
@@ -434,41 +450,103 @@ appointment newAppointment() {
   printf("\n*** NEW APPOINTMENT ADDED SUCCESSFULLY ***\n");
   printf("Now returning to Appointments Menu...\n");
   
+  saveAppointment(appt);
   return appt;
 }
 
-void removeAppointment() {
-    if (strlen(&currentAppointment.description) > 1) {
-        memset(&currentAppointment.description[0], 0, strlen(currentAppointment.description));
-        memset(&currentAppointment.place[0], 0, strlen(&currentAppointment.place));
-        //&currentAppointment.start = NULL;
-        //&currentAppointment.end = NULL;
-        printf("\n*** APPOINTMENT REMOVED SUCCESSFULLY ***\n");
+void removeAppointments() {
+    strncpy(filename, currentUsername, sizeof(currentUsername));
+    strcat(filename, appointmentExtension);
+            
+    if( access( filename, F_OK ) != -1 ) {
+        flush();
+        printf("Are you sure you want to delete all User Appointments? (1 = yes, 0 = no)   : ");
+        int areYouSure = getchar();
+        areYouSure -= '0';
+
+        if (areYouSure == 1) {
+            printf("\n*** REMOVING APPOINTMENTS FOR USER: %s *** \n", &currentUsername);
+
+            int result = remove(filename);
+
+            if(result == 0) {
+                currentAppointment = emptyAppointment;
+                printf("Appointments Removed Successfully.\n");
+            } else {
+                printf("No Existing Appointments found to delete.\n");
+            }
+        } else {
+            printf("\nAppointments Deletion canceled.\n");
+        }
+
     } else {
         printf("\n*** NO EXISTING APPOINTMENTS FOUND TO DELETE ***\n");
     }
-    
+
     printf("Now returning to Appointments Menu...\n");
     displayAppointmentsMenu();
 }
 
+void loadAppointments() {
+    strncpy(filename, currentUsername, sizeof(currentUsername));
+    strcat(filename, appointmentExtension);
+        
+    infile = fopen(filename, "r");
+    if(infile != NULL)
+    {
+        appointment appt;
+        int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;]", 
+                        &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
+                        &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
+                        &appt.place, &appt.description);
+        if (result != NULL) {
+            currentAppointment = appt;
+
+        }
+    }
+}
+
 void showAppointments() {
-  if (strlen(&currentAppointment.description) > 1) {
-        printf("\n*** SHOWING LAST APPOINTMENT DETAILS ***\n");
-        printf("Appointment Start Date: %d:%d %d-%d-%d\n" , currentAppointment.start.tm_hour, currentAppointment.start.tm_min, currentAppointment.start.tm_mday ,currentAppointment.start.tm_mon , currentAppointment.start.tm_year);
-        printf("Appointment Snd Date %d:%d %d-%d-%d\n" , currentAppointment.end.tm_hour, currentAppointment.end.tm_min, currentAppointment.end.tm_mday ,currentAppointment.end.tm_mon , currentAppointment.end.tm_year);
-        printf("Place/Location: %s\n" , currentAppointment.place);
-        printf("Contents/Description: %s\n\n" , currentAppointment.description);
-  } else {
-        printf("\n*** NO EXISTING APPOINTMENTS FOUND TO DISPLAY ***\n");
-  }
+    strncpy(filename, currentUsername, sizeof(currentUsername));
+    strcat(filename, appointmentExtension);
+    //printf("\nfilename: %s\n", filename);
+        
+        infile = fopen(filename, "r");
+        if(infile == NULL)
+        {
+            printf("\n*** NO EXISTING APPOINTMENTS FOUND TO SHOW ***\n");
+        } else {
+            appointment appt;
+            int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;]", 
+                            &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
+                            &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
+                            &appt.place, &appt.description);
+            // For testing
+            //printf("Entered username: %s , Compared username: %s\n", &Username, &possible_user.username);
+            //printf("Entered password: %s , Compared password: %s\n", Password, &possible_user.password);
+
+            if (result != NULL) {
+                currentAppointment = appt;
+                printf("\n*** SHOWING LAST APPOINTMENT DETAILS ***\n");
+                printf("Appointment Start Date: %d:%d %d-%d-%d\n" , currentAppointment.start.tm_hour, currentAppointment.start.tm_min, currentAppointment.start.tm_mday ,currentAppointment.start.tm_mon , currentAppointment.start.tm_year);
+                printf("Appointment End Date %d:%d %d-%d-%d\n" , currentAppointment.end.tm_hour, currentAppointment.end.tm_min, currentAppointment.end.tm_mday ,currentAppointment.end.tm_mon , currentAppointment.end.tm_year);
+                printf("Place/Location: %s\n" , currentAppointment.place);
+                printf("Contents/Description: %s\n\n" , currentAppointment.description);
+            } else {
+                printf("\n*** NO EXISTING APPOINTMENTS FOUND TO DISPLAY ***\n");
+            }
+        }
   
-  printf("Now returning to Appointments Menu...\n");
-  displayAppointmentsMenu();
+    printf("Now returning to Appointments Menu...\n");
+    displayAppointmentsMenu();
 }
 
 void modifyAppointment() {
-    if (strlen(&currentAppointment.description) > 1) {
+    loadAppointments();
+    strncpy(filename, currentUsername, sizeof(currentUsername));
+    strcat(filename, appointmentExtension);
+            
+    if( access( filename, F_OK ) != -1 ) {
         flush();
         printf("You will now be asked to enter new details for your existing Appointment...\n\n");
  
@@ -483,7 +561,7 @@ void modifyAppointment() {
         scanf("%d-%d-%d", &currentAppointment.end.tm_mday, &currentAppointment.end.tm_mon, &currentAppointment.end.tm_year);
         printf("\nPlease enter new appointment End Time (example input: 17:30)\n\Time Input: ");
         scanf("%d:%d", &currentAppointment.end.tm_hour, &currentAppointment.end.tm_min);
-
+        
         printf("\nAppointment Place/Location (current value): %s\n" , currentAppointment.place);
         printf("Please enter appointment Place/Location (up to 64 characters; example input: 8th floor Conference Room, Lawrence Street Center)\n\Input: ");
         flush();
@@ -495,10 +573,43 @@ void modifyAppointment() {
         scanf("%[^\n]s", &currentAppointment.description);
 
         printf("\n*** APPOINTMENT INFORMATION UPDATED SUCCESSFULLY ***\n");
+        printf("Now returning to Appointments Menu...\n");
+        saveAppointment(currentAppointment);
     } else {
         printf("\n*** NO EXISTING APPOINTMENTS FOUND TO MODIFY ***\n");
-    }
-    
-    printf("Now returning to Appointments Menu...\n");
+        printf("Now returning to Appointments Menu...\n");
+    } 
     displayAppointmentsMenu();
+}
+
+void saveAppointment(appointment appt) {
+    if (userAuthenticated) {
+        strncpy(filename, currentUsername, sizeof(currentUsername));
+        strcat(filename, appointmentExtension);
+        //printf("\nfilename: %s\n", filename);
+        
+        outfile = fopen (filename, "w");
+        if (outfile == NULL)
+        {
+            fprintf(stderr, "\nError saving Appointment Data to file %s\n", filename);
+        } else {
+
+            // Write appointment information to file
+            // Data written in following order: start date, end date, place, description;
+            // Delimiter used - ";"
+            int result = fprintf(outfile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%s;%s",          
+                                appt.start.tm_mday, appt.start.tm_mon, appt.start.tm_year, appt.start.tm_hour, appt.start.tm_min,                   
+                                appt.end.tm_mday, appt.end.tm_mon, appt.end.tm_year, appt.end.tm_hour, appt.end.tm_min,
+                                &appt.place, &appt.description);
+
+            if(result != 0) {
+                printf("\nAppointment Information saved successfully!\n");
+            } else {
+                printf("\nError saving Appointment Information\n");
+            }
+            fclose(outfile);
+        }
+    } else {
+        printf("\nYou are not Signed in, so there is no Information to save.\nTo Save Information you need to either Sign In or Add a New User.\n");
+    }
 }
