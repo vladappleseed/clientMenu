@@ -47,6 +47,9 @@ bool userAuthenticated = false;
 int selection;
 appointment currentAppointment;
 appointment emptyAppointment;
+appointment allAppts[];
+appointment tempApptsArray[];
+int apptCount = 0;
 
 void displayMainMenu();
 void displayAppointmentsMenu();
@@ -62,7 +65,9 @@ void removeAppointments();
 void loadAppointments();
 void showAppointments();
 void modifyAppointment();
-void saveAppointment(appointment appt);
+void saveAppointment(appointment allAppts[]);
+int getNumberOfLinesInFile(char filename[40]);
+void deleteAllLinesForFile(char filename[40]);
 
 
 int main(int argc, char *argv[])
@@ -136,6 +141,7 @@ void displayMainMenu() {
 
        case 4 :
           if (userAuthenticated) {
+            loadAppointments();
             printf("Now showing the Appointments Menu...\n");
             displayAppointmentsMenu();
           } else {
@@ -367,7 +373,7 @@ void displayAppointmentsMenu() {
     printf("0. Add Appointment\n");
     printf("1. Remove Appointments\n");
     printf("2. Show My Appointments\n");
-    printf("3. Update Existing Appointment\n");
+    printf("3. Update Last Added Appointment\n");
     printf("4. Go back to Main Menu\n");
     printf("5. Exit\n\n");
     printf("Selection: ");
@@ -421,37 +427,37 @@ void flush() {
 }
 
 appointment newAppointment() {
-  appointment appt;
+  //appointment appt;
   
   printf("You will now be asked to enter Appointment Details for your Appointment.\n\n");
   
   printf("\nPlease enter appointment Start Date (example input: 04-03-2018)\nDate Input: ");
-  scanf("%d-%d-%d", &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year);
+  scanf("%d-%d-%d", &allAppts[apptCount].start.tm_mday, &allAppts[apptCount].start.tm_mon, &allAppts[apptCount].start.tm_year);
   printf("\nPlease enter appointment Start Time (example input: 15:30)\n\Time Input: ");
-  scanf("%d:%d", &appt.start.tm_hour, &appt.start.tm_min);
-  printf("Your entered: %d:%d %d-%d-%d\n" , appt.start.tm_hour, appt.start.tm_min, appt.start.tm_mday ,appt.start.tm_mon , appt.start.tm_year);
+  scanf("%d:%d", &allAppts[apptCount].start.tm_hour, &allAppts[apptCount].start.tm_min);
+  printf("Your entered: %d:%d %d-%d-%d\n" , allAppts[apptCount].start.tm_hour, allAppts[apptCount].start.tm_min, allAppts[apptCount].start.tm_mday , allAppts[apptCount].start.tm_mon , allAppts[apptCount].start.tm_year);
   
   printf("\nPlease enter appointment End Date (example input: 04-03-2018)\nDate Input: ");
-  scanf("%d-%d-%d", &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year);
+  scanf("%d-%d-%d", &allAppts[apptCount].end.tm_mday, &allAppts[apptCount].end.tm_mon, &allAppts[apptCount].end.tm_year);
   printf("\nPlease enter appointment End Time (example input: 17:30)\n\Time Input: ");
-  scanf("%d:%d", &appt.end.tm_hour, &appt.end.tm_min);
-  printf("Your entered: %d:%d %d-%d-%d\n" , appt.end.tm_hour, appt.end.tm_min, appt.end.tm_mday ,appt.end.tm_mon , appt.end.tm_year);
+  scanf("%d:%d", &allAppts[apptCount].end.tm_hour, &allAppts[apptCount].end.tm_min);
+  printf("Your entered: %d:%d %d-%d-%d\n" , allAppts[apptCount].end.tm_hour, allAppts[apptCount].end.tm_min, allAppts[apptCount].end.tm_mday , allAppts[apptCount].end.tm_mon , allAppts[apptCount].end.tm_year);
   
   printf("\nPlease enter appointment Place/Location (up to 64 characters; example input: 8th floor Conference Room, Lawrence Street Center)\n\Input: ");
   flush();
-  scanf("%[^\n]s", &appt.place);
-  printf("Your entered: %s\n" , appt.place);
+  scanf("%[^\n]s", &allAppts[apptCount].place);
+  printf("Your entered: %s\n" , allAppts[apptCount].place);
   
   printf("\nPlease enter appointment Contents/Description (up to 128 characters; example input: Meet to discuss future semester classes)\n\Input: ");
   flush();
-  scanf("%[^\n]s", &appt.description);
-  printf("Your entered: %s\n" , appt.description); 
+  scanf("%[^\n]s", &allAppts[apptCount].description);
+  printf("Your entered: %s\n" , allAppts[apptCount].description); 
   
   printf("\n*** NEW APPOINTMENT ADDED SUCCESSFULLY ***\n");
   printf("Now returning to Appointments Menu...\n");
-  
-  saveAppointment(appt);
-  return appt;
+  ++apptCount;
+  saveAppointment(allAppts);
+  return allAppts[apptCount - 1];
 }
 
 void removeAppointments() {
@@ -471,6 +477,7 @@ void removeAppointments() {
 
             if(result == 0) {
                 currentAppointment = emptyAppointment;
+                apptCount = 0;
                 printf("Appointments Removed Successfully.\n");
             } else {
                 printf("No Existing Appointments found to delete.\n");
@@ -490,19 +497,28 @@ void removeAppointments() {
 void loadAppointments() {
     strncpy(filename, currentUsername, sizeof(currentUsername));
     strcat(filename, appointmentExtension);
+    
+    int numberOfLines = getNumberOfLinesInFile(filename);
+    //printf("\nNumber of lines in file '%s' is %d", filename, numberOfLines);
         
     infile = fopen(filename, "r");
     if(infile != NULL)
-    {
-        appointment appt;
-        int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;]", 
-                        &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
-                        &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
-                        &appt.place, &appt.description);
-        if (result != NULL) {
-            currentAppointment = appt;
-
+    { 
+       for (int i = 0; i < numberOfLines; ++i) {
+            appointment appt;
+            int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;];\n", 
+                            &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
+                            &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
+                            &appt.place, &appt.description);
+            if (result != NULL) {
+                currentAppointment = appt;
+                allAppts[i] = appt;
+                apptCount = i;
+            } else {
+                break;
+            }
         }
+       apptCount++;
     }
 }
 
@@ -510,34 +526,45 @@ void showAppointments() {
     strncpy(filename, currentUsername, sizeof(currentUsername));
     strcat(filename, appointmentExtension);
     //printf("\nfilename: %s\n", filename);
+    
+    int numberOfLines = getNumberOfLinesInFile(filename);
         
         infile = fopen(filename, "r");
         if(infile == NULL)
         {
-            printf("\n*** NO EXISTING APPOINTMENTS FOUND TO SHOW ***\n");
-        } else {
-            appointment appt;
-            int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;]", 
-                            &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
-                            &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
-                            &appt.place, &appt.description);
-            // For testing
-            //printf("Entered username: %s , Compared username: %s\n", &Username, &possible_user.username);
-            //printf("Entered password: %s , Compared password: %s\n", Password, &possible_user.password);
-
-            if (result != NULL) {
-                currentAppointment = appt;
-                printf("\n*** SHOWING LAST APPOINTMENT DETAILS ***\n");
-                printf("Appointment Start Date: %d:%d %d-%d-%d\n" , currentAppointment.start.tm_hour, currentAppointment.start.tm_min, currentAppointment.start.tm_mday ,currentAppointment.start.tm_mon , currentAppointment.start.tm_year);
-                printf("Appointment End Date %d:%d %d-%d-%d\n" , currentAppointment.end.tm_hour, currentAppointment.end.tm_min, currentAppointment.end.tm_mday ,currentAppointment.end.tm_mon , currentAppointment.end.tm_year);
-                printf("Place/Location: %s\n" , currentAppointment.place);
-                printf("Contents/Description: %s\n\n" , currentAppointment.description);
-            } else {
-                printf("\n*** NO EXISTING APPOINTMENTS FOUND TO DISPLAY ***\n");
+            printf("\n*** NO EXISTING APPOINTMENTS FOUND TO SHOW ***");
+        } else { 
+            printf("\n****************************************\n");
+            printf("TOTAL NUMBER OF APPOINTMENTS FOUND: %d", numberOfLines);
+            printf("\n****************************************\n");
+            for (int i = 0; i < numberOfLines; ++i) {
+                appointment appt;
+                int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;];\n", 
+                                &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
+                                &appt.end.tm_mday, &appt.end.tm_mon, &appt.end.tm_year, &appt.end.tm_hour, &appt.end.tm_min,
+                                &appt.place, &appt.description);
+                // For testing
+                //printf("Entered username: %s , Compared username: %s\n", &Username, &possible_user.username);
+                //printf("Entered password: %s , Compared password: %s\n", Password, &possible_user.password);
+                
+                //printf("index: %d\n", i);
+                
+                if (result != NULL) {
+                    currentAppointment = appt;
+                    allAppts[i] = appt;
+                    printf("\n*** SHOWING APPOINTMENT #%d DETAILS ***\n", i + 1);
+                    printf("Appointment Start Date: %d:%d %d-%d-%d\n" , currentAppointment.start.tm_hour, currentAppointment.start.tm_min, currentAppointment.start.tm_mday ,currentAppointment.start.tm_mon , currentAppointment.start.tm_year);
+                    printf("Appointment End Date %d:%d %d-%d-%d\n" , currentAppointment.end.tm_hour, currentAppointment.end.tm_min, currentAppointment.end.tm_mday ,currentAppointment.end.tm_mon , currentAppointment.end.tm_year);
+                    printf("Place/Location: %s\n" , currentAppointment.place);
+                    printf("Contents/Description: %s\n" , currentAppointment.description);
+                } else {
+                    printf("\n*** NO OTHER APPOINTMENTS FOUND TO DISPLAY ***\n");
+                    break;
+                }
             }
         }
   
-    printf("Now returning to Appointments Menu...\n");
+    printf("\nNow returning to Appointments Menu...\n");
     displayAppointmentsMenu();
 }
 
@@ -545,6 +572,8 @@ void modifyAppointment() {
     loadAppointments();
     strncpy(filename, currentUsername, sizeof(currentUsername));
     strcat(filename, appointmentExtension);
+    
+    int numberOfLines = getNumberOfLinesInFile(filename);
             
     if( access( filename, F_OK ) != -1 ) {
         flush();
@@ -572,9 +601,15 @@ void modifyAppointment() {
         flush();
         scanf("%[^\n]s", &currentAppointment.description);
 
+        flush();
+        //printf("\napptCount: %d", apptCount);
         printf("\n*** APPOINTMENT INFORMATION UPDATED SUCCESSFULLY ***\n");
         printf("Now returning to Appointments Menu...\n");
-        saveAppointment(currentAppointment);
+        
+        int index = apptCount - 1;
+        allAppts[index] = currentAppointment;
+        //deleteAllLinesForFile(filename);
+        saveAppointment(allAppts);
     } else {
         printf("\n*** NO EXISTING APPOINTMENTS FOUND TO MODIFY ***\n");
         printf("Now returning to Appointments Menu...\n");
@@ -582,7 +617,7 @@ void modifyAppointment() {
     displayAppointmentsMenu();
 }
 
-void saveAppointment(appointment appt) {
+void saveAppointment(appointment allAppts[]) {
     if (userAuthenticated) {
         strncpy(filename, currentUsername, sizeof(currentUsername));
         strcat(filename, appointmentExtension);
@@ -597,19 +632,53 @@ void saveAppointment(appointment appt) {
             // Write appointment information to file
             // Data written in following order: start date, end date, place, description;
             // Delimiter used - ";"
-            int result = fprintf(outfile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%s;%s",          
-                                appt.start.tm_mday, appt.start.tm_mon, appt.start.tm_year, appt.start.tm_hour, appt.start.tm_min,                   
-                                appt.end.tm_mday, appt.end.tm_mon, appt.end.tm_year, appt.end.tm_hour, appt.end.tm_min,
-                                &appt.place, &appt.description);
+            int displaySuccess = 0; 
+            for (int i = 0; i < apptCount; ++i) {
+                int result = fprintf(outfile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%s;%s;\n",          
+                                    allAppts[i].start.tm_mday, allAppts[i].start.tm_mon, allAppts[i].start.tm_year, allAppts[i].start.tm_hour, allAppts[i].start.tm_min,                   
+                                    allAppts[i].end.tm_mday, allAppts[i].end.tm_mon, allAppts[i].end.tm_year, allAppts[i].end.tm_hour, allAppts[i].end.tm_min,
+                                    &allAppts[i].place, &allAppts[i].description);
 
-            if(result != 0) {
+                if(result != 0) {
+                    displaySuccess = 1; 
+                } else {
+                    displaySuccess = 0;
+                }
+            }
+            if (displaySuccess == 1) {
                 printf("\nAppointment Information saved successfully!\n");
             } else {
                 printf("\nError saving Appointment Information\n");
             }
-            fclose(outfile);
         }
+        fclose(outfile);
     } else {
         printf("\nYou are not Signed in, so there is no Information to save.\nTo Save Information you need to either Sign In or Add a New User.\n");
     }
+}
+
+    int getNumberOfLinesInFile(char filename[40]) {
+        FILE *fp;
+        int count = 0;
+        char c; 
+
+        fp = fopen(filename, "r");
+        if (fp == NULL) {
+            //printf("Could not open file %s", filename);
+            return 0;
+        }
+        for (c = getc(fp); c != EOF; c = getc(fp)) {
+            if (c == '\n')
+                count = count + 1;
+        }
+        
+        fclose(fp);
+        return count;
+    }
+    
+ void deleteAllLinesForFile(char filename[40]) {
+    FILE *filetemp = fopen("__tempfile__","w");
+
+    fclose(filetemp);
+    rename("__tempfile__",filename);
 }
