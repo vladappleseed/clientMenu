@@ -1,12 +1,14 @@
 #C Project (Networks Lab #2)
 
 To run the Calendar program, please use gcc compiler, and follow the instructions below step by step:
-(1) Upload 'server.c' and 'clientMenu.c' files to csegrid
+(1) Upload 'server.c' and 'clientMenu.c' files to csegrid [CHECK NOTE BELOW]
 (2) Compile the 'server.c' file by executing: 'gcc server.c -o server.o'
 (3) Run the server code by executing: './server.o'
 (2) Now, compile the 'clientMenu.c' file by executing: 'gcc clientMenu.c -o clientMenu.o'
 (3) Run the client code by executing: './clientMenu.o 127.0.0.1'
 (4) Test the functionality as desired
+
+[NOTE: MAKE SURE YOU ARE RUNNING BOTH CLIENT AND SERVER FROM SAME csenode, for example: ucdencsecnode01]
 
 If any questions, please contact:
 >vladappleseed@gmail.com
