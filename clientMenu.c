@@ -16,9 +16,10 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <arpa/inet.h>
 
-#define _APPT_PLACE 65 // 64 Characters Max
-#define _APPT_DESCRIPTION 129 // 128 Characters Max
+#define PORT 4000           // port the client will be connecting to 
+#define MAXDATASIZE 512     // max number of bytes client can get at once 
 
 FILE *outfile;
 FILE *infile;
@@ -34,8 +35,8 @@ typedef struct {
 
     struct tm start;
     struct tm end;
-    char place[_APPT_PLACE];
-    char description[_APPT_DESCRIPTION];
+    char place[64];
+    char description[128];
 
 } appointment;
 
@@ -45,11 +46,21 @@ char * fileExtension = ".txt";
 char * appointmentExtension = "_appointment.txt";
 bool userAuthenticated = false;
 int selection;
+int apptCount = 0;
 appointment currentAppointment;
 appointment emptyAppointment;
 appointment allAppts[];
 appointment tempApptsArray[];
-int apptCount = 0;
+
+/* socket/connection-related */
+int sockfd;
+int numbytes; 
+int connected = 0;
+char buf[MAXDATASIZE];
+char sendbuf[MAXDATASIZE];
+struct hostent *host;
+struct sockaddr_in address, foo;
+struct addrinfo hints, *servinfo, *p;
 
 void displayMainMenu();
 void displayAppointmentsMenu();
@@ -65,17 +76,96 @@ void removeAppointments();
 void loadAppointments();
 void showAppointments();
 void modifyAppointment();
+void clearAppointmentData();
 void saveAppointment(appointment allAppts[]);
 int getNumberOfLinesInFile(char filename[40]);
 void deleteAllLinesForFile(char filename[40]);
-
+void attemptToConnectWithServer();
+void terminateConnectionWithServer();
+void reportUserDataToServer();
+void *get_in_addr(struct sockaddr *sa);
 
 int main(int argc, char *argv[])
 {
+    if (argc != 2) {
+        fprintf(stderr,"\nERROR: Arguments found missing\nExample Usage is: client 127.0.0.1\nNow exiting...\n");
+        exit(1);
+    }
+    
     clearScreen();
-    printf("Hello and Welcome to Personal Calendar App!\n");
-    displayMainMenu();
+    printf("\nATTEMPTING TO CONNECT WITH SERVER VIA '%s' ...\n\n", (gethostbyname(argv[1]))->h_name);
+    
+    // loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+	if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+	}
+        
+	if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("client: connect");
+            continue;
+	}
+        
+	break;
+    }
+    
+    if ((host=gethostbyname(argv[1])) == NULL) {  // get the host info 
+        perror("\nERROR: gethostbyname, please try again\nNow exiting...\n");
+        exit(1);
+    }
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        perror("\nERROR: socket, please try again\nNow exiting...\n");
+        exit(1);
+    }
+    
+    attemptToConnectWithServer();
+        
+    if (connected == 1) {
+        printf("Hello and Welcome to Personal Calendar App!\n");
+        printf("Press ENTER key to Continue...\n");  
+        flush();
+        getchar();
+        displayMainMenu();
+    } else {
+        printf("[1/1] Connection to Server Unsuccessful. Please try again.\n");
+        exit(1);
+    }
+
+    for(;;) {
+    	gets(sendbuf);
+    	numbytes=sizeof(sendbuf);
+    	sendbuf[numbytes]='\0';
+	if (numbytes == 0 || strncmp(sendbuf,"bye",3)==0) {
+	    printf("Bye\n");
+	    break;
+	}
+    	else {
+		if ((numbytes=send(sockfd, sendbuf, sizeof(sendbuf), 0)) == -1) {
+                perror("send");
+                close(sockfd);
+		exit(1);
+    		}
+
+		sendbuf[numbytes]='\0';
+		printf("Sent: %s\n",sendbuf);
+
+		if ((numbytes=recv(sockfd, buf, 127, 0)) == -1) {
+			perror("recv");
+			exit(1);
+		}
+
+		buf[numbytes] = '\0';
+	
+    		printf("Received: %s\n",buf);
+        }
+    }
+    close(sockfd);
+
+    return 0;
 }
+
 
 void displayMainMenu() {
     flush();
@@ -106,6 +196,7 @@ void displayMainMenu() {
                   printf("\nYou are now Signed Out. Returning to Main Menu...\n");
                   userAuthenticated = false;
                   strncpy(currentUsername, "not authenticated", 20);
+                  clearAppointmentData();
                   displayMainMenu();
               } else {
                   printf("Sign Out canceled. Returning to Main Menu...\n");
@@ -152,7 +243,8 @@ void displayMainMenu() {
 
        case 5  :
           //saveInformation();
-          printf("Now exiting... Goodbye!\n\n");
+          terminateConnectionWithServer();
+          printf("Now closing the Client App. Goodbye!\n\n");
           exit(0);
           break;
       
@@ -405,7 +497,8 @@ void displayAppointmentsMenu() {
           break;
 
        case 5  :
-          printf("Now exiting... Goodbye!\n\n");
+          terminateConnectionWithServer();
+          printf("Now closing the Client App. Goodbye!\n\n");
           exit(0);
           break;
       
@@ -661,28 +754,75 @@ void saveAppointment(appointment allAppts[]) {
     }
 }
 
-    int getNumberOfLinesInFile(char filename[40]) {
-        FILE *fp;
-        int count = 0;
-        char c; 
-
-        fp = fopen(filename, "r");
-        if (fp == NULL) {
-            //printf("Could not open file %s", filename);
-            return 0;
-        }
-        for (c = getc(fp); c != EOF; c = getc(fp)) {
-            if (c == '\n')
-                count = count + 1;
-        }
-        
-        fclose(fp);
-        return count;
+void clearAppointmentData(){
+    currentAppointment = emptyAppointment;
+    apptCount = 0;
+    int i;
+    for (i == 0; i < 10; ++i) {
+        allAppts[i] = emptyAppointment;
     }
+}
+
+int getNumberOfLinesInFile(char filename[40]) {
+    FILE *fp;
+    int count = 0;
+    char c; 
+
+    fp = fopen(filename, "r");
+    if (fp == NULL) {
+        //printf("Could not open file %s", filename);
+        return 0;
+    }
+    for (c = getc(fp); c != EOF; c = getc(fp)) {
+        if (c == '\n')
+            count = count + 1;
+    }
+        
+    fclose(fp);
+    return count;
+}
     
- void deleteAllLinesForFile(char filename[40]) {
+void deleteAllLinesForFile(char filename[40]) {
     FILE *filetemp = fopen("__tempfile__","w");
 
     fclose(filetemp);
     rename("__tempfile__",filename);
+}
+
+void attemptToConnectWithServer() {
+    address.sin_family = AF_INET;    // host byte order 
+    address.sin_port = htons(PORT);  // short, network byte order 
+    address.sin_addr = *((struct in_addr *)host->h_addr);
+    memset(&(address.sin_zero), '\0', 8);  // zero the rest of the struct 
+
+    if (connect(sockfd, (struct sockaddr *)&address, sizeof(struct sockaddr)) == -1) {
+        connected = 0;
+
+    } else {
+        connected = 1;
+        printf("Host socket number: %d\n", sockfd);
+        printf("Port number to connect to: %d\n", ntohs(address.sin_port));
+
+        printf("\nConnection with Server established Successfully.\n");
+        fprintf(stderr, "Now listening on %s:%d [SECURE CONNECTION]\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        printf("\n********************************************\n\n");
+    }
+}
+
+ void terminateConnectionWithServer() {
+    printf("\nAttempting to Terminate Connection with Server...\n**** YOU HAVE BEEN SUCCESSFULLY DISCONNECTED FROM SERVER ***\n\n");
+    close(sockfd);
+ }
+ 
+ void reportUserDataToServer() {
+     
+ }
+ 
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+	return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
