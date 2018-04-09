@@ -187,12 +187,12 @@ void displayMainMenu() {
        case 0  :
           if (userAuthenticated) {
               flush();
+              char *areYouSure;
               printf("You are already Authenticated as: %s\n", currentUsername);
               printf("Would you like to Sign Out? (1 = yes, 0 = no)   : ");
-              int areYouSure = getchar();
-              areYouSure -= '0';
+              scanf("%s", areYouSure);
 
-              if (areYouSure == 1) {
+              if (strncmp(areYouSure,"1",1) == 0) {
                   printf("\nYou are now Signed Out. Returning to Main Menu...\n");
                   userAuthenticated = false;
                   strncpy(currentUsername, "not authenticated", 20);
@@ -300,10 +300,10 @@ void authorizeExistingUser() {
             } else {
                 printf("\n*** UNABLE TO VERIFY CREDENTIALS ***\n");
             }
+            fclose(infile);
         }
         
         possible_user = empty_user;
-        fclose(infile);
         displayMainMenu();
     }
 }
@@ -363,10 +363,10 @@ void removeUser() {
     flush();
     printf("You are currently signed in as: %s\n", currentUsername);
     printf("Are you sure you want to Delete this User? (1 = yes, 0 = no)   : ");
-    int areYouSure = getchar();
-    areYouSure -= '0';
+    char *areYouSure;
+    scanf("%s", areYouSure);
 
-    if (areYouSure == 1) {
+    if (strncmp(areYouSure,"1",1) == 0) {
         strncpy(filename, currentUsername, sizeof(currentUsername));
         strcat(filename, fileExtension);
 
@@ -537,14 +537,14 @@ appointment newAppointment() {
   scanf("%d:%d", &allAppts[apptCount].end.tm_hour, &allAppts[apptCount].end.tm_min);
   printf("Your entered: %d:%d %d-%d-%d\n" , allAppts[apptCount].end.tm_hour, allAppts[apptCount].end.tm_min, allAppts[apptCount].end.tm_mday , allAppts[apptCount].end.tm_mon , allAppts[apptCount].end.tm_year);
   
-  printf("\nPlease enter appointment Place/Location (up to 64 characters; example input: 8th floor Conference Room, Lawrence Street Center)\n\Input: ");
+  printf("\nPlease enter appointment Place/Location (up to 64 characters; example input: 8th floor Conference Room, Lawrence Street Center)\n\nInput: ");
   flush();
-  scanf("%[^\n]s", &allAppts[apptCount].place);
+  scanf("%s", &allAppts[apptCount].place);
   printf("Your entered: %s\n" , allAppts[apptCount].place);
   
-  printf("\nPlease enter appointment Contents/Description (up to 128 characters; example input: Meet to discuss future semester classes)\n\Input: ");
+  printf("\nPlease enter appointment Contents/Description (up to 128 characters; example input: Meet to discuss future semester classes)\n\nInput: ");
   flush();
-  scanf("%[^\n]s", &allAppts[apptCount].description);
+  scanf("%s", &allAppts[apptCount].description);
   printf("Your entered: %s\n" , allAppts[apptCount].description); 
   
   printf("\n*** NEW APPOINTMENT ADDED SUCCESSFULLY ***\n");
@@ -561,10 +561,10 @@ void removeAppointments() {
     if( access( filename, F_OK ) != -1 ) {
         flush();
         printf("Are you sure you want to delete all User Appointments? (1 = yes, 0 = no)   : ");
-        int areYouSure = getchar();
-        areYouSure -= '0';
+        char *areYouSure;
+        scanf("%s", areYouSure);
 
-        if (areYouSure == 1) {
+        if (strncmp(areYouSure,"1",1) == 0) {
             printf("\n*** REMOVING APPOINTMENTS FOR USER: %s *** \n", &currentUsername);
 
             int result = remove(filename);
@@ -690,12 +690,12 @@ void modifyAppointment() {
         printf("\nAppointment Place/Location (current value): %s\n" , currentAppointment.place);
         printf("Please enter appointment Place/Location (up to 64 characters; example input: 8th floor Conference Room, Lawrence Street Center)\n\Input: ");
         flush();
-        scanf("%[^\n]s", &currentAppointment.place);
+        scanf("%s", &currentAppointment.place);
 
         printf("\nAppointment Contents/Description (current value): %s\n" , currentAppointment.description); 
         printf("Please enter appointment Contents/Description (up to 128 characters; example input: Meet to discuss future semester classes)\n\Input: ");
         flush();
-        scanf("%[^\n]s", &currentAppointment.description);
+        scanf("%s", &currentAppointment.description);
 
         flush();
         //printf("\napptCount: %d", apptCount);

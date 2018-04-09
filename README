@@ -1,12 +1,17 @@
-#C Project (Networks Lab #2)
+# README FILE Personal Calendar App (Networks Lab #2)
+# Author: vladappleseed
+# Created on: 04/08/2018
+
+NOTE: When modifying or adding new Appointment, Appointment description and place accepts 
+only 1 word, and no spaces (no points reduced, as discussed with TA)
+
+‘Makefile’ provided with submission is not necessary, and can ONLY BE USED on NetBeans IDE. 
+IF YOU ARE NOT USING NETBEANS IDE TO RUN THE CODE, please refer to instructions below on how to run:
 
 To run the Calendar program, please use gcc compiler, and follow the instructions below step by step:
 (1) Upload 'server.c' and 'clientMenu.c' files to csegrid
 (2) Compile the 'server.c' file by executing: 'gcc server.c -o server.o'
 (3) Run the server code by executing: './server.o'
 (2) Now, compile the 'clientMenu.c' file by executing: 'gcc clientMenu.c -o clientMenu.o'
-(3) Run the client code by executing: './clientMenu.o 127.0.0.1'
+(3) Run the client code by executing: './clientMenu.o hostname'
 (4) Test the functionality as desired
-
-If any questions, please contact:
->vladappleseed@gmail.com
