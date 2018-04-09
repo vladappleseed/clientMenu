@@ -311,7 +311,7 @@ void authorizeExistingUser() {
 void addNewUser() {
     flush();
     char Username[20];
-    printf("To return to Main Menu, enter 0 for Username\n\nUsername: ");
+    printf("*** To return to Main Menu, enter 0 for Username ***\nUSERNAME REQUIREMENTS: Up to 20 characters, only alpha numeric, hyphen, dash\n\nUsername: ");
     scanf("%s",&Username);
 
     if(strcmp(Username,"0") == 0) {
@@ -327,19 +327,19 @@ void addNewUser() {
         //scanf("%s",&user.password);
         bool passwordAccepted = false;
         while (!passwordAccepted) {
-            char *Password = getpass("Please enter your password: ");
+            char *Password = getpass("Enter your password\nPASSWORD REQUIREMENTS: Longer than 8 & shorter than 16 characters\n\nPassword: ");
             if (strlen(Password) > 8 && strlen(Password) < 16) {
                 strncpy(&user.password, Password, 20);
                 passwordAccepted = true;
             } else {
-                printf("Password should be longer than 8 and shorter than 16 characters.\nTry again...\n");
+                printf("PASSWORD SHOULD BE LONGER THAN 8 AND SHORTER THAN 16 CHARACTERS.\nPlease Try again.\n\n");
             }
         }
 
-        printf("Phone Number: ");
+        printf("\nPhone Number: ");
         scanf("%s",&user.phoneNumber);
 
-        printf("Email address: ");
+        printf("\nEmail address: ");
         scanf("%s", &user.email);
 
         strncpy(&user.username, Username, 20);
