@@ -417,7 +417,8 @@ void displayAppointmentsMenu() {
 }
 
 void clearScreen() {
-    for (int i = 0; i < 20; ++i) {
+    int i;
+    for (i = 0; i < 20; ++i) {
         printf("\n");
     }
 }
@@ -504,7 +505,8 @@ void loadAppointments() {
     infile = fopen(filename, "r");
     if(infile != NULL)
     { 
-       for (int i = 0; i < numberOfLines; ++i) {
+        int i;
+        for (i = 0; i < numberOfLines; ++i) {
             appointment appt;
             int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;];\n", 
                             &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
@@ -537,7 +539,8 @@ void showAppointments() {
             printf("\n****************************************\n");
             printf("TOTAL NUMBER OF APPOINTMENTS FOUND: %d", numberOfLines);
             printf("\n****************************************\n");
-            for (int i = 0; i < numberOfLines; ++i) {
+            int i;
+            for (i = 0; i < numberOfLines; ++i) {
                 appointment appt;
                 int result = fscanf(infile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%[^;];%[^;];\n", 
                                 &appt.start.tm_mday, &appt.start.tm_mon, &appt.start.tm_year, &appt.start.tm_hour, &appt.start.tm_min,                   
@@ -633,7 +636,8 @@ void saveAppointment(appointment allAppts[]) {
             // Data written in following order: start date, end date, place, description;
             // Delimiter used - ";"
             int displaySuccess = 0; 
-            for (int i = 0; i < apptCount; ++i) {
+            int i;
+            for (i = 0; i < apptCount; ++i) {
                 int result = fprintf(outfile, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%s;%s;\n",          
                                     allAppts[i].start.tm_mday, allAppts[i].start.tm_mon, allAppts[i].start.tm_year, allAppts[i].start.tm_hour, allAppts[i].start.tm_min,                   
                                     allAppts[i].end.tm_mday, allAppts[i].end.tm_mon, allAppts[i].end.tm_year, allAppts[i].end.tm_hour, allAppts[i].end.tm_min,
